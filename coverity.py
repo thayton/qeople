@@ -29,12 +29,13 @@ def soupify(page):
     for c in comments:
         c.extract()
 
-    # Remove entity references?
     return s
 
+#
 # Inspect page and you will see that they are using the jobs page
 # for Synopsys (parent company) and submitting the search form
 # with Keyword 'Coverity' to get results on Coverity's jobs page
+#
 class CoverityJobScraper(object):
     def __init__(self):
         self.br = mechanize.Browser(factory=mechanize.DefaultFactory(i_want_broken_xhtml_support=True))
@@ -59,18 +60,54 @@ class CoverityJobScraper(object):
         self.br.form['keyword'] = 'Coverity'
         self.br.submit('submit2')
 
-        s = soupify(self.br.response().read())
-        r = re.compile(r'^cim_jobdetail\.asp\?')
+        pageno = 2
 
-        for a in s.findAll('a', href=r):
-            tr = a.findParent('tr')
-            td = tr.findAll('td')
+        while True:
+            s = soupify(self.br.response().read())
+            r = re.compile(r'^cim_jobdetail\.asp\?')
 
-            job = {}
-            job['title'] = a.text
-            job['url'] = self.cleaned_url(a['href'])
-            job['location'] = td[3].text
-            jobs.append(job)
+            for a in s.findAll('a', href=r):
+                tr = a.findParent('tr')
+                td = tr.findAll('td')
+
+                job = {}
+                job['title'] = a.text
+                job['url'] = self.cleaned_url(a['href'])
+                job['location'] = td[3].text
+                jobs.append(job)
+
+            a = s.find('a', text='%d' % pageno)
+            if not a:
+                break # no more pages
+
+            pageno += 1
+
+            #
+            # Page 2 link: <a href="javascript:LoadPage(51)">2</a>
+            # 
+            # function LoadPage(lRecordStart)
+            # {
+            #   document.frmMassSelect.recordstart.value = lRecordStart;
+            #   document.frmMassSelect.JobInfo.value = gstrJobInfo;
+            #   document.frmMassSelect.JobSiteInfo.value = gJobSiteInfo;
+            #   document.frmMassSelect.sorting.value = "";
+            #   document.frmMassSelect.submit();
+            # }
+            #
+            # Clicking on page 2 link Results in FormData:
+            #
+            #   JobInfo:%%
+            #   recordstart:51
+            #   sorting:
+            #   JobSiteInfo:
+            #
+            r = re.compile(r'LoadPage\((\d+)')
+            m = re.search(r, a['href'])
+
+            self.br.select_form('frmMassSelect')
+            self.br.set_all_readonly(False)
+            self.br.form['recordstart'] = m.group(1)
+            self.br.submit()
 
         return jobs
 
