@@ -43,6 +43,7 @@ class AtlassianJobScraper(object):
             r = re.compile(r'\d+-\d+')
             b = s.find('b', text=r)
             p = b.parent
+
             r = re.compile(r'\d+-(\d+) of (\d+)')
             m = re.search(r, p.text)
 
@@ -55,15 +56,6 @@ class AtlassianJobScraper(object):
                 break 
 
         return jobs
-
-    def is_last_page(self, next_page_url):
-        '''
-        x   y      z
-        100-129 of 129
-        
-        When y == z we're on the last page
-        '''
-        return curr_page_rowFrom == next_page_rowFrom
 
     def cleaned_url(self, url):
         ''' 
@@ -80,16 +72,10 @@ class AtlassianJobScraper(object):
         self.br.open(job['url'])
         
         s = BeautifulSoup(self.br.response().read())
-        x = {'class': 'left job-content'}
-        n = s.find('section', attrs=x)
+        x = {'role': 'presentation'}
+        t = s.find('table', attrs=x)
 
-        job['location'] = COMPANY['company_hq']
-        job['description'] = Document(str(n)).summary()
-
-        x = {'class': 'apply'}
-        n = s.find('section', attrs=x)
-
-        job['how_to_apply'] = n.prettify()
+        job['description'] = Document(str(t)).summary()
 
     def scrape(self):
         jobs = self.scrape_job_links(COMPANY['company_jobs_page_url'])
