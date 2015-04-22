@@ -143,16 +143,10 @@ class CoverityJobScraper(object):
         self.br.open(job['url'])
         
         s = BeautifulSoup(self.br.response().read())
-        x = {'class': 'left job-content'}
-        n = s.find('section', attrs=x)
+        x = {'name': 'frmJobDetail'}
+        f = s.find('form', attrs=x)
 
-        job['location'] = COMPANY['company_hq']
-        job['description'] = Document(str(n)).summary()
-
-        x = {'class': 'apply'}
-        n = s.find('section', attrs=x)
-
-        job['how_to_apply'] = n.prettify()
+        job['description'] = Document(str(f)).summary()
 
     def scrape(self):
         jobs = self.scrape_job_links(COMPANY['company_jobs_page_url'])
